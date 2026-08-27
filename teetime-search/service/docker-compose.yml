@@ -1,0 +1,28 @@
+services:
+  api:
+    build: .
+    # Bound to loopback deliberately. This service receives the user's
+    # credentials in request bodies and must not be reachable off-host.
+    ports:
+      - "127.0.0.1:8077:8000"
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      # Partner API credentials belong in a local .env, never in this file.
+      GOLFNOW_CLIENT_ID: ${GOLFNOW_CLIENT_ID:-}
+      GOLFNOW_CLIENT_SECRET: ${GOLFNOW_CLIENT_SECRET:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    # No persistence: everything cached here is inventory with a 90s TTL and
+    # is worthless across restarts. Avoids credentials-adjacent data at rest.
+    command: redis-server --save "" --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
