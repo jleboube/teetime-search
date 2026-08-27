@@ -15,11 +15,13 @@ to never. Read this before estimating any coverage expansion.
 | Supreme Golf | — | Aggregator itself, no public API | — | Closed |
 | Quick18 | — | No public API | No | Closed |
 
-**The practical consequence:** GolfNow is not one source among many, it is the
-source. Everything else is either club-scoped (you query courses you already
-have a relationship with) or closed. Plan coverage accordingly — a product
-promising "all major platforms" will in practice be GolfNow plus whatever
-individual clubs the user belongs to.
+**The practical consequence:** there is no partner-API route to broad
+coverage, which is why this skill is connection-based instead. Coverage is the
+set of platforms the user links with their own accounts — their foreUP clubs,
+their Lightspeed club, their Teesnap club — plus, optionally, GolfNow partner
+credentials for public discovery inventory if the operator obtains them. A
+product promising "all major platforms" out of the box would be lying; one
+that grows with each account the user connects is honest and still useful.
 
 ## GolfNow Affiliate & Partner API
 
@@ -83,14 +85,31 @@ Four rules that keep the pipeline honest:
 - **`enabled` must be false without access.** A misconfigured adapter should
   drop out of the fan-out, not fail every search with the same error.
 
-## Adapters deliberately not written
+## User-account adapters (foreUP, Teesnap)
 
 `foreUP`, `Teesnap`, and `Club Prophet` have no partner access available to an
-independent developer, and their inventory is reachable only by driving their
-customer-facing web flows. That is a terms violation on every one of them, and
-it puts the user's account at risk rather than yours.
+independent developer; their inventory is reachable only through the APIs
+behind their customer-facing booking pages. The defensible way to use those is
+the one implemented here: a credentialed adapter acting as the user, against
+the user's own account, running locally, with the ToS risk stated before
+credentials are stored (`creds.py` does this). Never build these as general
+discovery sources — that shifts from "the user automating their own account"
+to "scraping the platform," which is a different thing legally and ethically.
 
-If a user has a member login to a club on one of these, the defensible move is a
-credentialed adapter acting as that user against their own account, running
-locally. Even then, tell them the risk first — `creds.py` does this before
-storing anything. Do not build these as general discovery sources.
+State of each:
+
+- **`foreup.py`** — modelled on the JSON API foreUP's own booking pages call
+  (login for a JWT, then a `times` query per schedule). Undocumented, so
+  verify on first connection: run a search and compare against the club's
+  booking page. The `course_id`/`schedule_id` pair comes from the club's
+  booking URL: `foreupsoftware.com/index.php/booking/{course_id}/{schedule_id}`.
+- **`teesnap.py`** — a placeholder. Teesnap's browser API hasn't been mapped
+  even informally; the adapter documents exactly how to complete it (log into
+  the club subdomain with dev tools open, capture the login and tee-sheet
+  requests, correct the paths and field names).
+- **Club Prophet** — not yet written; follow the same pattern.
+
+Because no platform returns course coordinates through these APIs, the broker
+collects each course's ZIP and the adapter resolves it against the local
+gazetteer — centroid accuracy is within a couple of miles, fine against
+5-mile bands.

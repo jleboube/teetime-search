@@ -1,9 +1,12 @@
 # Tee Time Search — a Claude Skill
 
-A Claude Skill that searches golf tee times across booking platforms and
-presents them banded by distance (5/10/15/20/25/35 miles) from a ZIP code or
-location. Ask Claude *"where can I play Saturday morning near 47714?"* and get
-back a merged, deduplicated, price-compared list of what's actually open.
+A Claude Skill that searches golf tee times across the booking platforms
+**you connect with your own accounts** — foreUP, Chronogolf/Lightspeed,
+Teesnap — and presents them merged, deduplicated, and banded by distance
+(5/10/15/20/25/35 miles) from a ZIP code or location. Ask Claude *"where can I
+play Saturday morning near 47714?"*; it asks for whatever's missing (date,
+group size, location), fans out across your connections, and compares what's
+actually open.
 
 ```
 Within 5 miles
@@ -48,24 +51,36 @@ cd teetime-search
 python scripts/search.py --origin 47714 --date tomorrow --players 4 --demo
 ```
 
-## Demo mode vs. live data
+## Connecting your booking platforms
 
-Out of the box the skill has **no live inventory source** — that's honest, not
-broken. `--demo` enables a synthetic provider with deterministic, clearly
-fictional inventory so you can see the whole pipeline work.
+Coverage is whatever you choose to connect. Each connection uses your own
+login for that platform, stored only in your OS keychain:
 
-For real data:
+```bash
+cd teetime-search
+python scripts/creds.py set foreup      # your foreUP courses
+python scripts/creds.py set chronogolf  # your Lightspeed Golf club
+python scripts/creds.py set teesnap     # your Teesnap club
+```
 
-- **GolfNow / TeeOff** (the largest public US inventory) requires
-  [partner API credentials](https://www.golfnow.com/business-partnership).
-  The adapter is written but **unverified against their sandbox** — expect to
-  correct endpoint paths and field names when credentials arrive. See
-  `teetime-search/references/providers.md`.
-- **Tier-2 platforms** (Chronogolf/Lightspeed, foreUP, Teesnap) use your own
-  member login, stored only in your OS keychain via
-  `python scripts/creds.py set <provider>`. Automated access with your own
-  account may violate a platform's terms of service; the tool tells you so
-  and makes you confirm before storing anything.
+The broker prompts for exactly what each platform needs and requires you to
+acknowledge, first, that automated access with your own account may violate
+that platform's terms of service — that risk is yours to accept or decline.
+
+**Verify each connection on first use.** None of these platforms publish an
+official user API, so each adapter is modelled on the API behind the
+platform's own booking pages. Run one search after connecting and compare it
+with the club's booking site. foreUP is the most complete; Teesnap is a
+documented placeholder awaiting someone with a club login to capture the real
+endpoints (`teetime-search/service/app/providers/teesnap.py` explains how).
+
+`--demo` enables a synthetic provider with deterministic, clearly fictional
+inventory so you can see the whole pipeline work before connecting anything.
+
+Optionally, operators who obtain
+[GolfNow partner credentials](https://www.golfnow.com/business-partnership)
+can also light up public discovery inventory — see
+`teetime-search/references/providers.md`.
 
 ## Security posture
 

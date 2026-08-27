@@ -11,11 +11,15 @@ import httpx
 from .base import TeeTimeProvider
 from .chronogolf import ChronogolfProvider
 from .demo import DemoProvider
+from .foreup import ForeUpProvider
 from .golfnow import GolfNowProvider
+from .teesnap import TeesnapProvider
 
 REGISTRY: dict[str, type[TeeTimeProvider]] = {
     GolfNowProvider.name: GolfNowProvider,
     ChronogolfProvider.name: ChronogolfProvider,
+    ForeUpProvider.name: ForeUpProvider,
+    TeesnapProvider.name: TeesnapProvider,
     DemoProvider.name: DemoProvider,
 }
 

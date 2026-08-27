@@ -40,10 +40,13 @@ teetime-search/              the distributable skill folder
     app/dedupe.py            course identity resolution
     app/models.py            normalized domain models
     app/providers/base.py    adapter interface
-    app/providers/golfnow.py partner API (UNVERIFIED endpoints)
+    app/providers/golfnow.py partner API, optional (UNVERIFIED endpoints)
     app/providers/chronogolf.py Lightspeed partner API v2
+    app/providers/foreup.py  user-account adapter (verify on first connection)
+    app/providers/teesnap.py user-account adapter (PLACEHOLDER endpoints)
     app/providers/demo.py    deterministic synthetic inventory, opt-in only
     tests/test_dedupe.py     dedupe regression tests
+    tests/test_providers.py  enabled-gating regression tests
 ```
 
 ## Invariants
@@ -93,28 +96,43 @@ behave.
 inventory. It is opt-in only (`--demo` on the CLI → `provider_configs.demo.
 enabled`); synthetic data must never mix silently into a real search.
 
-**Written but unverified:** the GolfNow and Chronogolf adapters. The GolfNow
-endpoint paths and field names are modelled on the documented API shape but
-have *not* been checked against the sandbox. Do not trust a result from either
-adapter until they are validated against real credentials.
+**Written but unverified:** every live adapter, to different degrees.
+`foreup.py` follows the API observed behind foreUP's own booking pages and is
+the closest to working; verify against a real member login on first
+connection. `chronogolf.py` follows the documented Partner API v2 shape.
+`teesnap.py` is an explicit placeholder — its docstring says how to complete
+it. `golfnow.py` (optional partner path) is modelled on the documented shape
+but unchecked against the sandbox. Do not trust a result from any of them
+until validated against real credentials.
+
+## Product direction (2026-08-27)
+
+The product is **connection-based**: users link the booking platforms they
+hold accounts on, with their own credentials, and coverage is the union of
+their connections. The GolfNow partner API is an optional operator add-on for
+public discovery inventory, not a prerequisite. The skill's conversational
+job on initiation is to collect date, total golfers, and origin (asking once,
+together, for whatever is missing), then fan out across connections.
 
 ## Phased plan
 
-### Phase 1 — Make one provider real
-Apply for GolfNow affiliate access. When credentials arrive, validate
-`golfnow.py` against the sandbox and correct every endpoint path and field
-name. Write `tests/test_golfnow.py` with recorded fixtures. Until this is done
-the product does not work.
+### Phase 1 — Validate the connection adapters against real accounts
+Connect a real foreUP login (most golfers with a home course have one) and
+verify `foreup.py` end to end; correct endpoints and record fixtures into
+`tests/test_foreup.py`. Complete `teesnap.py` when someone with a Teesnap
+club login can capture the real endpoints. Chronogolf when partner access to
+the user's club exists.
 
-### Phase 2 — Prove the pipeline end to end
-Build the ZIP database, bring up the stack, and run real searches across five
-metro areas. Manually verify dedupe against courses you can check by hand.
-Confirm p95 latency under 6 seconds.
+### Phase 2 — Prove the pipeline with live connections
+Run real searches through connected accounts across several dates. Manually
+verify dedupe against courses you can check by hand. Confirm p95 latency
+under 6 seconds.
 
-### Phase 3 — Tier-2 for real accounts
-Determine which platforms the user actually holds accounts on, then implement
-those adapters. Chronogolf is scaffolded; others need writing. Each one needs
-its consent copy reviewed before shipping.
+### Phase 3 — Broaden the connection catalog
+Club Prophet, Golf18/TenFore, CourseRev, and a GolfNow consumer-account
+adapter (their bot defenses make it the riskiest — weigh carefully). Each
+new platform needs its consent copy reviewed before shipping. Optionally,
+apply for GolfNow affiliate access to add public discovery inventory.
 
 ### Phase 4 — Usability
 Time-window and price filters, 9-hole handling, saved searches. Consider

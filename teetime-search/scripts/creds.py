@@ -47,13 +47,36 @@ def _require_keyring() -> None:
 SERVICE = "teetime-search"
 INDEX_KEY = "__configured_providers__"
 
-# What each tier-2 provider needs. Keeping this explicit means the prompt asks
-# for exactly the right fields instead of a generic username/password guess.
-PROVIDER_FIELDS: dict[str, list[tuple[str, bool]]] = {
-    # provider: [(field_name, is_secret), ...]
-    "chronogolf": [("access_token", True), ("club_ids", False)],
-    "foreup": [("username", False), ("password", True), ("course_ids", False)],
-    "teesnap": [("username", False), ("password", True), ("course_ids", False)],
+# What each provider connection needs. Keeping this explicit means the prompt
+# asks for exactly the right fields instead of a generic username/password
+# guess. Fields ending in _ids or _zips accept comma-separated lists.
+#
+# course_zips exists because most booking APIs don't return course coordinates,
+# and a listing without coordinates can't be distance-banded. The user knows
+# their own club's ZIP; asking for it once beats geocoding by name.
+PROVIDER_FIELDS: dict[str, list[tuple[str, bool, bool]]] = {
+    # provider: [(field_name, is_secret, required), ...]
+    "chronogolf": [
+        ("access_token", True, True),
+        ("club_ids", False, True),
+    ],
+    "foreup": [
+        ("username", False, True),
+        ("password", True, True),
+        # From the club's booking URL: foreupsoftware.com/index.php/booking/
+        # {course_id}/{schedule_id}
+        ("course_id", False, True),
+        ("schedule_ids", False, True),
+        ("course_zips", False, True),
+        ("booking_class_id", False, False),
+    ],
+    "teesnap": [
+        # The club's subdomain: {subdomain}.teesnap.net
+        ("subdomain", False, True),
+        ("username", False, True),
+        ("password", True, True),
+        ("course_zip", False, True),
+    ],
 }
 
 CONSENT = """
@@ -95,19 +118,22 @@ def cmd_set(provider: str) -> int:
         return 0
 
     payload: dict[str, object] = {}
-    for field, secret in fields:
+    for field, secret, required in fields:
+        prompt = f"{provider} {field}" + ("" if required else " (optional)")
         if secret:
-            value = getpass.getpass(f"{provider} {field} (hidden): ")
+            value = getpass.getpass(f"{prompt} (hidden): ")
         else:
-            value = input(f"{provider} {field}: ").strip()
+            value = input(f"{prompt}: ").strip()
         if not value:
-            print(f"{field} is required.", file=sys.stderr)
-            return 1
-        # Comma-separated id lists become real lists so adapters don't have to
+            if required:
+                print(f"{field} is required.", file=sys.stderr)
+                return 1
+            continue
+        # Comma-separated lists become real lists so adapters don't have to
         # re-parse them at request time.
         payload[field] = (
             [v.strip() for v in value.split(",") if v.strip()]
-            if field.endswith("_ids")
+            if field.endswith(("_ids", "_zips"))
             else value
         )
 
