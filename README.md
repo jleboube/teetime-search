@@ -9,39 +9,24 @@ group size, location), fans out across your connections, and compares what's
 actually open.
 
 ```
-     |\
-     | \__    T E E   S H E E T   .   Sat Aug 29   .   4 players   .   47714
-     |_|__\   12 courses . 128 open seats . within 35 mi
-     |
-  ___|_____________________________________________________________
-
-                 .............
-             ....             ....
-          ...      ...........J.      ...
-      ...     ....           ....     ...
-    .. L   ..     F..........     ..     ..
-   ..    ..    ..           D ..    ..    M
-   .     .     .    ...A...    .     .     .
-   .     .    .    C.  @  5     15   25    35
-   .     .     .    .....B.    .  G  .     .
-   ..    ..    ..             ..    ..    ..
-    .     . H   ...         ...     .     .
-      ...     ....           ....     ...
-          ...      ............K      ...
-             ....             ....
-                 .............
-   @ you   . rings at 5/15/25/35 mi   letters = courses below
-
-+-- Within 5 miles ------------------------------------------------+
-| A    7:26a  Willow Creek Golf Club          $29  4 slots  demo   |
-| B    8:06a  Stonebridge Links               $33  4 slots  demo   |
-+------------------------------------------------------------------+
-+-- Within 10 miles -----------------------------------------------+
-| C    7:54a  Eagle Crest North               $65  4 slots  demo   |
-+------------------------------------------------------------------+
+╭────────────────────────────────────────────────────────╮
+│ ⛳ Tee Sheet  Saturday Aug 29 · 4 players · near 47714 │
+│ 12 courses · 128 open seats · within 35 mi             │
+╰────────────────────────────────────────────────────────╯
+╭──────┬─────────┬─────────────────────────────┬──────────┬───────┬────────╮
+│   mi │ tee off │ course                      │ $/player │ slots │ via    │
+├──────┼─────────┼─────────────────────────────┼──────────┼───────┼────────┤
+│  2.0 │   9:22a │ Willow Creek Golf Club      │      $29 │   4   │ foreup │
+│  4.9 │   7:02a │ Stonebridge Links           │      $33 │   4   │ foreup │
+├──────┼─────────┼─────────────────────────────┼──────────┼───────┼────────┤
+│  7.8 │   9:50a │ Eagle Crest North           │      $65 │   4   │ chrono │
+╰──────┴─────────┴─────────────────────────────┴──────────┴───────┴────────╯
 ```
 
-Yes, it draws you a map. In ASCII. In your terminal.
+Full color in a real terminal (rich), with section breaks at each distance
+band. And you don't even have to ask: **the watcher** knows which days you
+usually play and texts you an iMessage digest the morning your courses'
+booking windows open.
 
 ## How it works
 
@@ -106,6 +91,31 @@ Optionally, operators who obtain
 [GolfNow partner credentials](https://www.golfnow.com/business-partnership)
 can also light up public discovery inventory — see
 `teetime-search/references/providers.md`.
+
+## The watcher: tee times come to you
+
+Nobody opens a terminal to book golf — so after setup you shouldn't have to.
+Tell it your pattern once:
+
+```bash
+cd teetime-search
+python scripts/prefs.py init          # days you play, group size, ZIP, phone
+python scripts/watch.py --dry-run     # preview what it would send
+python scripts/watch.py --install-launchd
+```
+
+From then on, a daily launchd job checks each of your usual play days as soon
+as it enters your courses' booking window and iMessages you a digest — via
+your own Messages.app, to your own number (your self-thread works great):
+
+> ⛳ Sat Aug 29: tee sheet is open — 12 courses near 47714 for 4
+> • 7:26a Willow Creek Golf Club $29 (2 mi)
+> • 8:06a Stonebridge Links $33 (5 mi)
+> …and 10 more
+
+It's quiet by default (messages only when the sheet opens or new times
+appear), checks once per day per date — the same footprint as checking by
+hand — and `--uninstall-launchd` turns it off.
 
 ## Security posture
 

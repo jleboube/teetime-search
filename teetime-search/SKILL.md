@@ -115,19 +115,20 @@ anything; always tell the user when results are demo data.
 
 ## Presenting results
 
-The CLI's default output is a finished ASCII tee sheet: a range map plotting
-every course by real bearing and distance around the user, then a scorecard
-per distance band, with map letters keying the two together. **Present it
-verbatim inside a fenced code block** — do not reformat it into prose or a
-markdown table; the render is the product. After the block, add at most one
-or two sentences of commentary (the standout slot, a coverage gap, a price
-worth noticing).
+The CLI's default output is a finished terminal tee sheet (rendered with
+rich): a header panel, then one table of courses ordered by distance with
+section breaks at each band edge, colored when a human runs it directly.
+**Present it verbatim inside a fenced code block** — do not reformat it into
+prose or a markdown table; the render is the product. After the block, add
+at most one or two sentences of commentary (the standout slot, a coverage
+gap, a price worth noticing).
 
 Courses appear once each with the cheapest listing; alternatives on other
 platforms show as an inline note, since the user may prefer to book where
-they hold a membership or rewards balance. `--plain` produces a compact
-table (no map) for narrow contexts, and `--json` raw data — reach for those
-only when the tee sheet genuinely doesn't fit the medium.
+they hold a membership or rewards balance. A yellow price means the platform
+didn't state per-player-with-cart. `--plain` produces a bare table for
+narrow contexts, and `--json` raw data — reach for those only when the tee
+sheet genuinely doesn't fit the medium.
 
 **Always report incomplete coverage.** The output's footnote line flags
 connections that failed or timed out — keep that line intact and repeat the
@@ -141,6 +142,46 @@ Deep-link, don't automate. Give the user the platform URL from the result and
 let them complete the purchase themselves. Automating checkout against a saved
 payment method is both a terms violation and a good way to buy the wrong tee
 time.
+
+## The watcher: proactive checks with iMessage delivery
+
+The watcher searches on the user's behalf — no chat session involved — and
+texts them a digest when tee times appear for their usual play days. Offer to
+set it up during install, right after platforms are connected.
+
+Setup is a short interview. Ask conversationally (days they usually play,
+usual tee-off window, usual group size, home ZIP, how far ahead their courses
+open booking, the phone number or Apple ID email for iMessage — their own
+number texts their self-thread), then save the answers non-interactively:
+
+```bash
+python scripts/prefs.py init --days sat,sun --window 06:30-11:00 \
+  --players 4 --origin 47714 --lead-days 7 --imessage-to +15551234567
+python scripts/watch.py --dry-run          # show the user what it would send
+python scripts/watch.py --test-message     # confirm iMessage delivery works
+python scripts/watch.py --install-launchd  # schedule the daily check
+```
+
+How it behaves, so questions can be answered accurately:
+
+- It runs daily (launchd, at `run_at` in prefs) and checks each usual play
+  day once it comes within `lead_days` — anchored to when booking windows
+  open, because that's the morning good slots exist.
+- It is quiet by default: a message goes out only when the tee sheet first
+  opens or new times appear since the last check. Never on "still nothing."
+- Delivery is via the user's own Messages.app (macOS may show a one-time
+  Automation permission prompt — the user must approve it). With no
+  recipient configured, it falls back to a macOS notification.
+- One search per watched date per day — indistinguishable from the user
+  checking manually. Never tighten this into a polling loop; that is how
+  member accounts get suspended.
+- `python scripts/watch.py --uninstall-launchd` turns it off;
+  `prefs.py show` / `prefs.py init` review and change settings.
+- Preferences live in `~/.config/teetime/prefs.json` (not secrets); the
+  watcher's log is `~/.config/teetime/logs/watch.log`.
+
+When a user mentions getting a watcher text, re-run the search fresh before
+discussing it — the text is a snapshot of volatile inventory.
 
 ## Things that will bite you
 

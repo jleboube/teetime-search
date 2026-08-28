@@ -136,157 +136,113 @@ def render(payload: dict) -> str:
     return "\n".join(lines)
 
 
-# --- ASCII tee sheet -------------------------------------------------------
-# The default human-facing render. If this thing is going to live in a
-# terminal, it should look like it belongs there: a range map plotting every
-# course by real bearing and distance, then a scorecard per band. Pure ASCII
-# (no box-drawing Unicode) so it survives any terminal, pager, or text message.
+# --- Terminal UI ----------------------------------------------------------
+# The default human-facing render, built on rich. One table, real distances,
+# section breaks at the band edges. Degrades to the plain table when rich
+# isn't installed, and rich itself strips color when output is piped.
 
-MAP_HALF_ROWS = 10   # rows above/below the origin
-RING_RADII = [5, 15, 25, 35]  # alternating bands keep the rings legible
-
-FLAG = [
-    "     |\\",
-    "     | \\__",
-    "     |_|__\\",
-    "     |",
-    "  ___|___",
-]
-FLAG_W = 14  # pad flag rows to a common width so header lines align
+BAND_EDGES = {"5mi": 5, "10mi": 10, "15mi": 15, "20mi": 20, "25mi": 25, "35mi": 35}
 
 
-def _course_points(payload: dict) -> list[tuple[str, dict, dict]]:
-    """(letter, group, best listing) in band order — the letter is the shared
-    key between the map and the scorecard."""
-    points = []
-    letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"  # I and O read as 1 and 0 on a map
-    i = 0
-    for key in BAND_LABELS:
-        for group in payload.get("bands", {}).get(key, []):
-            if i >= len(letters):
-                return points
-            best, _ = best_listing(group)
-            points.append((letters[i], group, best))
-            i += 1
-    return points
+def render_rich(payload: dict, meta: dict) -> bool:
+    """Print the tee sheet. Returns False if rich is unavailable so the
+    caller can fall back to the plain render."""
+    try:
+        from rich import box as rich_box
+        from rich.console import Console
+        from rich.panel import Panel
+        from rich.table import Table
+        from rich.text import Text
+    except ImportError:
+        return False
 
-
-def render_map(payload: dict, points: list, max_r: float) -> list[str]:
-    olat, olng = payload["origin_lat"], payload["origin_lng"]
-    mile_per_row = max_r / MAP_HALF_ROWS
-    mile_per_col = mile_per_row / 2  # terminal cells are ~2x taller than wide
-    half_cols = int(max_r / mile_per_col)
-
-    height = MAP_HALF_ROWS * 2 + 1
-    width = half_cols * 2 + 1 + 3  # margin so the outer ring's label fits
-    cy, cx = MAP_HALF_ROWS, half_cols
-    grid = [[" "] * width for _ in range(height)]
-
-    # Distance rings, swept parametrically so they stay round-ish despite the
-    # cell aspect ratio.
-    for r in RING_RADII:
-        if r > max_r:
-            continue
-        for deg in range(0, 360, 2):
-            a = math.radians(deg)
-            col = cx + int(round(r * math.sin(a) / mile_per_col))
-            row = cy - int(round(r * math.cos(a) / mile_per_row))
-            if 0 <= row < height and 0 <= col < width:
-                grid[row][col] = "."
-        # Label each ring on the east axis.
-        lc = cx + int(round(r / mile_per_col))
-        label = str(r)
-        if lc + len(label) < width:
-            for j, ch in enumerate(label):
-                grid[cy][lc + j] = ch
-
-    # Courses, plotted by real offset from the origin.
-    for letter, group, _ in points:
-        dx = (group["lng"] - olng) * 69.0 * math.cos(math.radians(olat))
-        dy = (group["lat"] - olat) * 69.0
-        col = cx + int(round(dx / mile_per_col))
-        row = cy - int(round(dy / mile_per_row))
-        if 0 <= row < height and 0 <= col < width:
-            grid[row][col] = letter
-
-    grid[cy][cx] = "@"  # you are here
-
-    out = ["".join(r).rstrip() for r in grid]
-    out.append("@ you   . rings at " + "/".join(
-        str(r) for r in RING_RADII if r <= max_r) + " mi   letters = courses below")
-    return out
-
-
-def render_ascii(payload: dict, meta: dict) -> str:
+    console = Console()
+    bands = payload.get("bands", {})
     failed = [p for p in payload.get("providers", []) if not p["ok"]]
-    points = _course_points(payload)
 
-    if not points:
-        msg = "No tee times found in that radius."
-        if failed:
-            detail = ", ".join(f"{p['provider']} ({p['error']})" for p in failed)
-            msg += f"\nNote: {detail}"
-        return msg
+    if not bands:
+        console.print("[bold]No tee times found in that radius.[/bold]")
+        for p in failed:
+            console.print(f"[red]![/red] {p['provider']}: {p['error']}")
+        return True
 
-    total_slots = sum(
-        x["slots_available"] for _, g, _ in points for x in g["listings"]
-    )
-    max_r = float(meta.get("max_radius_mi", 35.0))
-    inner = 66  # scorecard interior width
-
-    day = date.fromisoformat(meta["date"]).strftime("%a %b %-d")
-    head1 = f"T E E   S H E E T   .   {day}   .   {meta['players']} players   .   {meta['origin']}"
-    head2 = (
-        f"{len(points)} courses . {total_slots} open seats . within {max_r:.0f} mi"
+    groups_in_order = [
+        (key, g) for key in BAND_LABELS for g in bands.get(key, [])
+    ]
+    n_seats = sum(
+        x["slots_available"] for _, g in groups_in_order for x in g["listings"]
     )
 
-    lines: list[str] = []
-    lines.append(FLAG[0])
-    lines.append(f"{FLAG[1]:<{FLAG_W}}" + head1)
-    lines.append(f"{FLAG[2]:<{FLAG_W}}" + head2)
-    lines.append(FLAG[3])
-    lines.append(f"{FLAG[4]:<{FLAG_W}}".rstrip("_ ") + "_" * (len(head1) + 5))
-    lines.append("")
-    lines.extend("   " + row for row in render_map(payload, points, max_r))
-    lines.append("")
+    day = date.fromisoformat(meta["date"]).strftime("%A %b %-d")
+    title = Text()
+    title.append("\u26f3 Tee Sheet", style="bold green")
+    title.append(f"  {day} · {meta['players']} players · near {meta['origin']}")
+    sub = Text(
+        f"{len(groups_in_order)} courses · {n_seats} open seats · "
+        f"within {meta['max_radius_mi']:.0f} mi",
+        style="dim",
+    )
+    console.print(Panel(Text.assemble(title, "\n", sub), box=rich_box.ROUNDED,
+                        border_style="green", expand=False))
 
-    # Scorecard, one section per band.
-    idx = 0
-    for key, label in BAND_LABELS.items():
-        groups = payload.get("bands", {}).get(key, [])
-        if not groups:
-            continue
-        title = f" {label} "
-        lines.append("+--" + title + "-" * max(inner - len(title) - 2, 0) + "+")
-        for group in groups:
-            if idx >= len(points):
-                break
-            letter, _, best = points[idx]
-            idx += 1
-            _, note = best_listing(group)
-            src = best["provider"] + (" *" if best.get("member_rate") else "")
-            row = (
-                f" {letter}  {fmt_time(best['tee_off']):>7}  "
-                f"{group['name'][:28]:<29} {fmt_price(best):>5}  "
-                f"{best['slots_available']} slots  {src[:12]}"
-            )
-            lines.append("|" + f"{row:<{inner}}"[:inner] + "|")
-            if note:
-                lines.append("|" + f"      {note.strip():<{inner - 6}}"[:inner] + "|")
-        lines.append("+" + "-" * inner + "+")
+    table = Table(
+        box=rich_box.ROUNDED,
+        border_style="dim",
+        header_style="bold",
+        padding=(0, 1),
+        expand=False,
+    )
+    table.add_column("mi", justify="right", style="dim")
+    table.add_column("tee off", justify="right", style="bold cyan")
+    table.add_column("course")
+    table.add_column("$/player", justify="right")
+    table.add_column("slots", justify="center")
+    table.add_column("via", style="dim")
 
-    footnotes = []
-    if any(best.get("member_rate") for _, _, best in points):
-        footnotes.append("* your account")
-    if any(best["provider"] == "demo" for _, _, best in points):
-        footnotes.append("DEMO DATA (fictional inventory)")
-    if failed:
-        footnotes.append(
-            "INCOMPLETE — no answer from: "
-            + ", ".join(f"{p['provider']} ({p['error']})" for p in failed)
+    last_band = None
+    for key, group in groups_in_order:
+        if last_band is not None and key != last_band:
+            table.add_section()
+        last_band = key
+
+        best, note = best_listing(group)
+        course = Text(group["name"], style="bold")
+        if note:
+            course.append("\n" + note.strip(), style="dim italic")
+
+        price_style = "yellow" if best.get("price_confidence") == "low" else "green"
+        price = Text(fmt_price(best), style=price_style)
+
+        via = best["provider"]
+        via_text = Text(via, style="yellow" if via == "demo" else "dim")
+        if best.get("member_rate"):
+            via_text = Text(via + " ·yours", style="magenta")
+
+        table.add_row(
+            f"{group['distance_mi']:.1f}",
+            fmt_time(best["tee_off"]),
+            course,
+            price,
+            str(best["slots_available"]),
+            via_text,
         )
-    lines.append("  " + "   ".join(footnotes))
-    return "\n".join(lines)
+
+    console.print(table)
+
+    if any(best_listing(g)[0].get("price_confidence") == "low"
+           for _, g in groups_in_order):
+        console.print("[dim]yellow price = approximate — provider did not state "
+                      "per-player-with-cart[/dim]")
+    if any(x["provider"] == "demo" for _, g in groups_in_order
+           for x in g["listings"]):
+        console.print("[yellow bold]DEMO DATA[/yellow bold]"
+                      "[yellow] — fictional inventory[/yellow]")
+    for p in failed:
+        console.print(
+            f"[red bold]INCOMPLETE[/red bold] [red]— no answer from "
+            f"{p['provider']}: {p['error']}[/red]"
+        )
+    return True
 
 
 def main() -> int:
@@ -299,7 +255,7 @@ def main() -> int:
     ap.add_argument("--holes", type=int, choices=[9, 18])
     ap.add_argument("--json", action="store_true", help="raw output")
     ap.add_argument(
-        "--plain", action="store_true", help="compact table, no map"
+        "--plain", action="store_true", help="compact table, no color/boxes"
     )
     ap.add_argument(
         "--demo",
@@ -352,7 +308,12 @@ def main() -> int:
             "origin": args.origin,
             "max_radius_mi": args.max_radius,
         }
-        print(render_ascii(payload, meta))
+        if not render_rich(payload, meta):
+            print(render(payload))
+            print(
+                "(tip: pip install rich for the full tee sheet)",
+                file=sys.stderr,
+            )
     return 0
 
 

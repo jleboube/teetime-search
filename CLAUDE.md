@@ -25,9 +25,11 @@ CLAUDE.md                    this file
 README.md                    public-facing docs
 teetime-search/              the distributable skill folder
   SKILL.md                   skill definition + result formatting rules
-  requirements.txt           host-side deps (httpx, keyring)
-  scripts/search.py          CLI the skill invokes; runs on host
+  requirements.txt           host-side deps (httpx, keyring, rich)
+  scripts/search.py          CLI the skill invokes; rich terminal tee sheet
   scripts/creds.py           keychain broker; runs on host
+  scripts/prefs.py           play-pattern preferences (~/.config/teetime/)
+  scripts/watch.py           launchd watcher; iMessage/notification digests
   references/providers.md    per-platform access model
   references/credentials.md  security posture
   service/
@@ -92,6 +94,13 @@ demo provider: image builds, ZIP db writes 33,791 rows, `/health` answers,
 `scripts/search.py --demo` returns banded results, cache and error paths
 behave.
 
+**Watcher (2026-08-27):** prefs.py + watch.py deliver the Phase-4 alerting
+idea as a local launchd job: daily checks anchored to booking-window opening
+(lead_days), snapshot diffing so it only messages on new inventory, delivery
+via the user's own Messages.app (osascript) with macOS-notification fallback.
+Verified end to end in demo mode. Deliberately capped at one search per
+watched date per run — see the ToS note in Phase 4.
+
 **Demo provider:** `app/providers/demo.py` generates deterministic fictional
 inventory. It is opt-in only (`--demo` on the CLI → `provider_configs.demo.
 enabled`); synthetic data must never mix silently into a real search.
@@ -135,10 +144,11 @@ new platform needs its consent copy reviewed before shipping. Optionally,
 apply for GolfNow affiliate access to add public discovery inventory.
 
 ### Phase 4 — Usability
-Time-window and price filters, 9-hole handling, saved searches. Consider
-alerting — desirable tee times get taken within minutes of release, which is
-the single strongest feature idea in the product and also the one most likely
-to draw platform attention. Weigh that before building it.
+Time-window and price filters, 9-hole handling, saved searches. Alerting is
+now built (the watcher) but deliberately gentle: one check per watched date
+per day. Resist making it poll faster — release-sniping cadence is the
+single likeliest way to draw platform attention and user account
+suspensions.
 
 ## Gotchas
 
