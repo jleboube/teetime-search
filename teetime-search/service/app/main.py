@@ -9,9 +9,14 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import time
 from typing import Optional
 
-import redis.asyncio as aioredis
+try:
+    import redis.asyncio as aioredis
+except ImportError:  # no-Docker mode installs without the redis client
+    aioredis = None
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
@@ -21,25 +26,60 @@ from .search import execute
 
 app = FastAPI(title="Tee Time Aggregator", version="0.1.0")
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+# Unset REDIS_URL (the no-Docker mode) means the in-process cache below.
+# The compose file sets it explicitly for the containerized stack.
+REDIS_URL = os.getenv("REDIS_URL")
 # Tee time inventory turns over fast. A cache older than this actively
 # misleads — a golfer shown a slot that was taken two minutes ago will
 # bounce off a sold-out booking page.
 INVENTORY_TTL_S = 90
 
-_redis: Optional[aioredis.Redis] = None
+
+class MemoryCache:
+    """Redis-shaped in-process TTL cache. The cache's only job here is 90
+    seconds of inventory reuse in a single process — a second service and a
+    Docker daemon are a lot of machinery for a dict with timestamps."""
+
+    def __init__(self) -> None:
+        self._store: dict[str, tuple[float, str]] = {}
+
+    async def get(self, key: str) -> Optional[str]:
+        hit = self._store.get(key)
+        if hit is None:
+            return None
+        expires, value = hit
+        if time.monotonic() > expires:
+            self._store.pop(key, None)
+            return None
+        return value
+
+    async def setex(self, key: str, ttl: int, value: str) -> None:
+        if len(self._store) > 512:  # long-running process hygiene
+            now = time.monotonic()
+            for k in [k for k, (exp, _) in self._store.items() if exp < now]:
+                self._store.pop(k, None)
+        self._store[key] = (time.monotonic() + ttl, value)
+
+    async def aclose(self) -> None:
+        self._store.clear()
+
+
+_cache = None
 
 
 @app.on_event("startup")
 async def startup() -> None:
-    global _redis
-    _redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+    global _cache
+    if REDIS_URL and aioredis is not None:
+        _cache = aioredis.from_url(REDIS_URL, decode_responses=True)
+    else:
+        _cache = MemoryCache()
 
 
 @app.on_event("shutdown")
 async def shutdown() -> None:
-    if _redis:
-        await _redis.aclose()
+    if _cache:
+        await _cache.aclose()
 
 
 class SearchPayload(BaseModel):
@@ -106,8 +146,8 @@ async def search(payload: SearchPayload) -> SearchResponse:
     )
 
     key = _cache_key(req, list(payload.provider_configs.keys()))
-    if _redis:
-        cached = await _redis.get(key)
+    if _cache:
+        cached = await _cache.get(key)
         if cached:
             return SearchResponse.model_validate_json(cached)
 
@@ -115,7 +155,7 @@ async def search(payload: SearchPayload) -> SearchResponse:
 
     # Only cache complete results. Caching a partial response would pin a
     # transient provider outage in place for its full TTL.
-    if _redis and resp.complete:
-        await _redis.setex(key, INVENTORY_TTL_S, resp.model_dump_json())
+    if _cache and resp.complete:
+        await _cache.setex(key, INVENTORY_TTL_S, resp.model_dump_json())
 
     return resp

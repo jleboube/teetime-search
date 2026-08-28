@@ -6,16 +6,14 @@ open near you on one sheet, and can text you when tee times open up for the
 days you usually play. You don't need to know how any of it works: Claude
 sets it up for you.
 
-## One-time setup (about 10 minutes)
+## One-time setup (about 5 minutes)
 
-1. **Install Docker Desktop** — the only thing you install by hand.
-   Download it from https://www.docker.com/products/docker-desktop/,
-   open it once, and leave it running. (It's free for personal use.)
+There is nothing to install by hand — Claude sets everything up.
 
-2. **Put this folder somewhere permanent** — for example your home folder —
+1. **Put this folder somewhere permanent** — for example your home folder —
    not in Downloads where it might get cleaned up.
 
-3. **Open Terminal** (press Cmd+Space, type "Terminal", press Enter),
+2. **Open Terminal** (press Cmd+Space, type "Terminal", press Enter),
    then type this and press Enter (adjust the path if you put the folder
    somewhere else):
 
@@ -23,7 +21,10 @@ sets it up for you.
    cd ~/teetime-search && claude
    ```
 
-4. **Paste this to Claude** and let it drive:
+   (If your Mac pops up an offer to install "command line developer
+   tools" at any point, click Install — that's normal.)
+
+3. **Paste this to Claude** and let it drive:
 
    > Read SKILL.md in this folder. Install this folder as a skill at
    > ~/.claude/skills/teetime-search, install whatever it needs, start the

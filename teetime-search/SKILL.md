@@ -19,23 +19,25 @@ containing this SKILL.md).
 
 ## Setup (first use)
 
-Two prerequisites, checked in order:
+One step — install the CLI dependencies:
 
-1. **Host dependencies** for the CLI scripts:
+```bash
+pip install -r requirements.txt
+```
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+The aggregator service starts itself: the first search auto-launches it as a
+plain local process via `scripts/serve.py` (which builds a private venv at
+`~/.config/teetime/venv` and downloads the ~2 MB Census ZIP gazetteer, one
+time, a couple of minutes). No Docker required. Manual control:
 
-2. **The aggregator service** must be running (requires Docker):
+```bash
+python3 scripts/serve.py start    # or: stop / status / run (foreground)
+```
 
-   ```bash
-   docker compose -f service/docker-compose.yml up -d --build
-   ```
-
-   The first build downloads the Census ZIP gazetteer (~2 MB) and takes a
-   minute or two. Verify with
-   `curl -s http://127.0.0.1:8077/health` — expect `{"status":"ok"}`.
+Verify with `curl -s http://127.0.0.1:8077/health` — expect
+`{"status":"ok"}`. If the native service won't start, diagnose with
+`python3 scripts/serve.py run`, or use the equivalent Docker stack instead:
+`docker compose -f service/docker-compose.yml up -d --build`.
 
 ## Starting a search: gather the essentials first
 

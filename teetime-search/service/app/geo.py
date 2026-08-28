@@ -8,13 +8,18 @@ accumulating a log of where users are searching.
 from __future__ import annotations
 
 import math
+import os
 import sqlite3
 from functools import lru_cache
 from pathlib import Path
 
 from .models import CourseGroup, TeeTime
 
-ZIP_DB = Path(__file__).parent / "data" / "zips.sqlite"
+# Docker bakes the db into the image; the no-Docker runner (scripts/serve.py)
+# builds it under ~/.config/teetime and points here via the env var.
+ZIP_DB = Path(
+    os.getenv("TEETIME_ZIP_DB") or Path(__file__).parent / "data" / "zips.sqlite"
+)
 
 # The bands the product promises. Ordered; each is a strict superset of the last.
 BANDS_MI = [5, 10, 15, 20, 25, 35]

@@ -10,12 +10,16 @@ skill folder is self-contained (that's what gets zipped and shared) and has
 two halves:
 
 - `teetime-search/` (top level) — runs natively on the host. SKILL.md, the
-  search CLI, the credential broker.
-- `teetime-search/service/` — Dockerized FastAPI aggregator. Provider
-  adapters, dedupe, banding, cache.
+  search CLI, the credential broker, the watcher, the service runner.
+- `teetime-search/service/` — the FastAPI aggregator. Provider adapters,
+  dedupe, banding, cache. Runs as a plain local process by default
+  (scripts/serve.py: private venv + in-process cache + on-first-run ZIP db),
+  or as the Docker compose stack for those who prefer it.
 
-The split is not stylistic. Containers cannot reach the OS keychain, so the
-credential broker must be native while the adapters stay containerized.
+Either way the broker stays on the host (containers cannot reach the OS
+keychain) and the API binds to 127.0.0.1 only. REDIS_URL set → Redis cache
+(compose sets it); unset → MemoryCache. TEETIME_ZIP_DB points the native
+service at ~/.config/teetime/zips.sqlite; the image bakes its own copy.
 
 ## Layout
 
@@ -30,6 +34,7 @@ teetime-search/              the distributable skill folder
   scripts/creds.py           keychain broker; runs on host
   scripts/prefs.py           play-pattern preferences (~/.config/teetime/)
   scripts/watch.py           launchd watcher; iMessage/notification digests
+  scripts/serve.py           no-Docker service runner (venv, ZIP db, uvicorn)
   references/providers.md    per-platform access model
   references/credentials.md  security posture
   service/
@@ -93,6 +98,12 @@ stack. The whole pipeline has been verified end to end (2026-08-27) via the
 demo provider: image builds, ZIP db writes 33,791 rows, `/health` answers,
 `scripts/search.py --demo` returns banded results, cache and error paths
 behave.
+
+**No-Docker mode (2026-08-28):** scripts/serve.py runs the service natively
+and search.py/watch.py auto-start it. Verified cold: venv build, 33,791-row
+ZIP db download, loopback-only uvicorn, cache hits, stop/start lifecycle.
+Service requirements are floor-pinned because exact pins strand user Pythons
+without prebuilt wheels (rapidfuzz on 3.14 was the lesson).
 
 **Watcher (2026-08-27):** prefs.py + watch.py deliver the Phase-4 alerting
 idea as a local launchd job: daily checks anchored to booking-window opening

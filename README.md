@@ -35,26 +35,31 @@ The skill has two halves, and the split is deliberate:
 - **`teetime-search/`** — the skill itself: `SKILL.md`, a search CLI, and a
   credential broker that runs natively on the host so it can reach the OS
   keychain (containers can't).
-- **`teetime-search/service/`** — a Dockerized FastAPI aggregator bound to
-  `127.0.0.1` only. Provider adapters fan out concurrently, results are
-  deduplicated (the same course often appears on several platforms under
-  slightly different names), banded by distance, and cached for 90 seconds.
+- **`teetime-search/service/`** — a FastAPI aggregator bound to `127.0.0.1`
+  only, run as a plain local process (Docker optional). Provider adapters
+  fan out concurrently, results are deduplicated (the same course often
+  appears on several platforms under slightly different names), banded by
+  distance, and cached for 90 seconds.
 
 ZIP resolution is fully offline — a SQLite database of ~33,000 Census ZCTA
-centroids is built into the image, so no geocoding API, no rate limits, and no
-third party learning where you search.
+centroids, downloaded once at first start, so no geocoding API, no rate
+limits, and no third party learning where you search.
 
 ## Install
 
-Requires Docker and Python 3.10+.
+Requires Python 3.10+. No Docker.
 
 1. Copy `teetime-search/` into your skills directory
    (`~/.claude/skills/teetime-search` for Claude Code), or point Claude at
    this repo.
 2. `pip install -r teetime-search/requirements.txt`
-3. `docker compose -f teetime-search/service/docker-compose.yml up -d --build`
 
-Then ask Claude about tee times, or run a search directly:
+That's it — the first search auto-starts the aggregator as a local process
+(one-time setup builds a private venv and downloads the ZIP database; a
+couple of minutes). Prefer containers? The same service runs with
+`docker compose -f teetime-search/service/docker-compose.yml up -d --build`.
+
+Ask Claude about tee times, or run a search directly:
 
 ```bash
 cd teetime-search

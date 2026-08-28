@@ -84,24 +84,26 @@ def target_dates(p: dict, today: date) -> list[date]:
 
 
 def ensure_service() -> bool:
-    """Health-check the aggregator; try to start it if it's down. Best
-    effort — if Docker itself isn't running, a scheduled job shouldn't try
-    to fix that."""
-    for attempt in (1, 2):
-        try:
-            if httpx.get(f"{SERVICE_URL}/health", timeout=3.0).status_code == 200:
-                return True
-        except httpx.HTTPError:
-            pass
-        if attempt == 1:
-            log("service down, attempting docker compose up")
-            subprocess.run(
-                ["docker", "compose", "-f",
-                 str(SKILL_DIR / "service" / "docker-compose.yml"), "up", "-d"],
-                capture_output=True, timeout=120, check=False,
-            )
-            time.sleep(8)
-    return False
+    """Health-check the aggregator; start the native service if it's down.
+    Fall back to Docker for installs that use the compose stack."""
+    import serve
+
+    if serve.healthy():
+        return True
+    log("service down, starting native service")
+    if serve.start() == 0:
+        return True
+    log("native start failed, trying docker compose")
+    subprocess.run(
+        ["docker", "compose", "-f",
+         str(SKILL_DIR / "service" / "docker-compose.yml"), "up", "-d"],
+        capture_output=True, timeout=120, check=False,
+    )
+    time.sleep(8)
+    try:
+        return httpx.get(f"{SERVICE_URL}/health", timeout=3.0).status_code == 200
+    except httpx.HTTPError:
+        return False
 
 
 def run_search(p: dict, when: date) -> dict | None:

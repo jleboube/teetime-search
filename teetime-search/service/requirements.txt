@@ -1,6 +1,9 @@
-fastapi==0.115.6
-uvicorn[standard]==0.34.0
-httpx==0.28.1
-pydantic==2.10.4
-redis==5.2.1
-rapidfuzz==3.11.0
+# Floor pins, not exact pins: the no-Docker mode installs these into a venv
+# on whatever Python the user has (3.10-3.14+), and exact pins strand newer
+# interpreters without prebuilt wheels (rapidfuzz on 3.14 was the lesson).
+fastapi>=0.115
+uvicorn[standard]>=0.34
+httpx>=0.28
+pydantic>=2.10,<3
+redis>=5
+rapidfuzz>=3.11

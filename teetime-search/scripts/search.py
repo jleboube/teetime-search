@@ -285,12 +285,20 @@ def main() -> int:
     try:
         resp = httpx.post(f"{SERVICE_URL}/search", json=body, timeout=30.0)
     except httpx.ConnectError:
-        print(
-            "Cannot reach the aggregator service. Start it with:\n"
-            "    cd service && docker compose up -d",
-            file=sys.stderr,
-        )
-        return 1
+        # Service down: start it in place (first ever start builds a venv and
+        # the ZIP db, so this can take a couple of minutes once) and retry.
+        import serve
+
+        if serve.start() != 0:
+            print(
+                "Cannot start the aggregator service. Diagnose with:\n"
+                "    python3 scripts/serve.py run\n"
+                "or use Docker instead:\n"
+                "    docker compose -f service/docker-compose.yml up -d --build",
+                file=sys.stderr,
+            )
+            return 1
+        resp = httpx.post(f"{SERVICE_URL}/search", json=body, timeout=30.0)
 
     if resp.status_code != 200:
         print(f"search failed ({resp.status_code}): {resp.text}", file=sys.stderr)
