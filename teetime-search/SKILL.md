@@ -115,32 +115,25 @@ anything; always tell the user when results are demo data.
 
 ## Presenting results
 
-Golfers scan for three things: how far, what time, how much. Lead with those.
+The CLI's default output is a finished ASCII tee sheet: a range map plotting
+every course by real bearing and distance around the user, then a scorecard
+per distance band, with map letters keying the two together. **Present it
+verbatim inside a fenced code block** — do not reformat it into prose or a
+markdown table; the render is the product. After the block, add at most one
+or two sentences of commentary (the standout slot, a coverage gap, a price
+worth noticing).
 
-Group by distance band, nearest first, and inside each band sort by tee time.
-Skip empty bands entirely rather than printing "no results" six times.
+Courses appear once each with the cheapest listing; alternatives on other
+platforms show as an inline note, since the user may prefer to book where
+they hold a membership or rewards balance. `--plain` produces a compact
+table (no map) for narrow contexts, and `--json` raw data — reach for those
+only when the tee sheet genuinely doesn't fit the medium.
 
-```
-Within 10 miles
-  7:42a   Cambridge Golf Course        $38   4 slots   foreUP (your account)
-  9:05a   Helfrich Hills               $34   4 slots   foreUP (your account)
-
-Within 25 miles
-  7:20a   Rolling Hills CC             $45   4 slots   Chronogolf (member)
-```
-
-When the same course shows up from more than one platform, show it once with
-the cheapest price, and mention the alternative inline — the user may prefer
-to book where they hold a membership or rewards balance:
-
-```
-  8:10a   Fendrich Golf Course         $29   2 slots   foreUP (also $34 on GolfNow)
-```
-
-**Always report incomplete coverage.** The response includes a `providers`
-block listing which connections answered. If any failed or timed out, say so
-in one line after the results. A golfer who thinks they've seen everything and
-hasn't will book the wrong thing.
+**Always report incomplete coverage.** The output's footnote line flags
+connections that failed or timed out — keep that line intact and repeat the
+warning in the commentary. A golfer who thinks they've seen everything and
+hasn't will book the wrong thing. The same footnote area marks demo data;
+never present demo results without saying they're fictional.
 
 ## Booking
 

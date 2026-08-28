@@ -9,14 +9,39 @@ group size, location), fans out across your connections, and compares what's
 actually open.
 
 ```
-Within 5 miles
-   9:22a  Willow Creek Golf Club              $29  4 slots
-   7:02a  Stonebridge Links                   $33  4 slots
+     |\
+     | \__    T E E   S H E E T   .   Sat Aug 29   .   4 players   .   47714
+     |_|__\   12 courses . 128 open seats . within 35 mi
+     |
+  ___|_____________________________________________________________
 
-Within 10 miles
-   9:50a  Eagle Crest North                   $65  4 slots
-...
+                 .............
+             ....             ....
+          ...      ...........J.      ...
+      ...     ....           ....     ...
+    .. L   ..     F..........     ..     ..
+   ..    ..    ..           D ..    ..    M
+   .     .     .    ...A...    .     .     .
+   .     .    .    C.  @  5     15   25    35
+   .     .     .    .....B.    .  G  .     .
+   ..    ..    ..             ..    ..    ..
+    .     . H   ...         ...     .     .
+      ...     ....           ....     ...
+          ...      ............K      ...
+             ....             ....
+                 .............
+   @ you   . rings at 5/15/25/35 mi   letters = courses below
+
++-- Within 5 miles ------------------------------------------------+
+| A    7:26a  Willow Creek Golf Club          $29  4 slots  demo   |
+| B    8:06a  Stonebridge Links               $33  4 slots  demo   |
++------------------------------------------------------------------+
++-- Within 10 miles -----------------------------------------------+
+| C    7:54a  Eagle Crest North               $65  4 slots  demo   |
++------------------------------------------------------------------+
 ```
+
+Yes, it draws you a map. In ASCII. In your terminal.
 
 ## How it works
 
