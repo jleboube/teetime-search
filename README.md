@@ -28,6 +28,34 @@ band. And you don't even have to ask: **the watcher** knows which days you
 usually play and texts you an iMessage digest the morning your courses'
 booking windows open.
 
+## Just want to use it?
+
+You need a Mac with [Claude Code](https://claude.com/claude-code) on it —
+nothing else. Claude does the entire setup. Open Terminal (Cmd+Space, type
+"Terminal", Enter) and paste:
+
+```
+git clone https://github.com/jleboube/teetime-search ~/teetime-search && cd ~/teetime-search/teetime-search && claude
+```
+
+(If your Mac offers to install "command line developer tools" at any point,
+click Install — that's normal.) When Claude starts, paste this and let it
+drive:
+
+> Read SKILL.md in this folder. Install this folder as a skill at
+> ~/.claude/skills/teetime-search, install whatever it needs, start the
+> service, and show me a demo tee sheet so I can see it working. Then walk
+> me through connecting my golf booking accounts, and set up the watcher so
+> it texts me when tee times open for the days I usually play.
+
+Claude will ask about your usual play days, group size, ZIP code, and phone
+number as it goes — answer in plain English. The step-by-step version of
+this, written for non-technical folks, is
+[**START_HERE.md**](teetime-search/START_HERE.md).
+
+Searching works on macOS and Linux; the watcher's iMessage delivery and
+scheduling are macOS-only.
+
 ## How it works
 
 The skill has two halves, and the split is deliberate:
@@ -45,25 +73,23 @@ ZIP resolution is fully offline — a SQLite database of ~33,000 Census ZCTA
 centroids, downloaded once at first start, so no geocoding API, no rate
 limits, and no third party learning where you search.
 
-## Install
+## Install (developers)
 
-Requires Python 3.10+. No Docker.
-
-1. Copy `teetime-search/` into your skills directory
-   (`~/.claude/skills/teetime-search` for Claude Code), or point Claude at
-   this repo.
-2. `pip install -r teetime-search/requirements.txt`
-
-That's it — the first search auto-starts the aggregator as a local process
-(one-time setup builds a private venv and downloads the ZIP database; a
-couple of minutes). Prefer containers? The same service runs with
+Copy `teetime-search/` into your skills directory
+(`~/.claude/skills/teetime-search` for Claude Code) or work from the clone.
+There is nothing to pip-install: every script self-bootstraps a managed venv
+at `~/.config/teetime/venv` on first run (PEP 668 makes bare `pip install`
+fail on modern Macs anyway, so no instruction here would survive one). The
+first search also starts the aggregator as a local process and downloads the
+ZIP database — one-time, a couple of minutes. Python 3.10+ (`python3
+--version` to check). Prefer containers? The same service runs with
 `docker compose -f teetime-search/service/docker-compose.yml up -d --build`.
 
 Ask Claude about tee times, or run a search directly:
 
 ```bash
 cd teetime-search
-python scripts/search.py --origin 47714 --date tomorrow --players 4 --demo
+python3 scripts/search.py --origin 47714 --date tomorrow --players 4 --demo
 ```
 
 ## Connecting your booking platforms

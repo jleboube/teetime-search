@@ -28,32 +28,28 @@ Usage:
 """
 from __future__ import annotations
 
-import hashlib
 import os
 import signal
 import subprocess
 import sys
 import time
-import venv
 from pathlib import Path
 
+# Venv management lives in _bootstrap (shared with every CLI script); this
+# module adds the ZIP db and the uvicorn process lifecycle on top of it.
+from _bootstrap import ensure_venv, venv_python
 import prefs as prefs_mod
 
 SERVICE_URL = "http://127.0.0.1:8077"
 PORT = "8077"
 
 CONFIG_DIR = prefs_mod.CONFIG_DIR
-VENV_DIR = CONFIG_DIR / "venv"
 ZIP_DB = CONFIG_DIR / "zips.sqlite"
 PID_FILE = CONFIG_DIR / "service.pid"
 LOG_FILE = CONFIG_DIR / "logs" / "service.log"
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
 SERVICE_DIR = SKILL_DIR / "service"
-REQUIREMENTS = SERVICE_DIR / "requirements.txt"
-# Stamped after a successful install so a changed requirements file triggers
-# a reinstall and an unchanged one costs nothing.
-STAMP = VENV_DIR / ".requirements.sha1"
 
 
 def say(msg: str) -> None:
@@ -68,26 +64,6 @@ def healthy(timeout: float = 2.0) -> bool:
             return r.status == 200
     except OSError:
         return False
-
-
-def venv_python() -> Path:
-    return VENV_DIR / "bin" / "python"
-
-
-def ensure_venv() -> None:
-    want = hashlib.sha1(REQUIREMENTS.read_bytes()).hexdigest()
-    if venv_python().exists() and STAMP.exists() and STAMP.read_text() == want:
-        return
-    say("first run: building the service environment (one time, ~2 min)")
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    venv.create(VENV_DIR, with_pip=True, clear=not venv_python().exists())
-    r = subprocess.run(
-        [str(venv_python()), "-m", "pip", "install", "-q", "-r", str(REQUIREMENTS)],
-        capture_output=True, text=True,
-    )
-    if r.returncode != 0:
-        raise SystemExit(f"dependency install failed:\n{r.stderr[-2000:]}")
-    STAMP.write_text(want)
 
 
 def ensure_zip_db() -> None:

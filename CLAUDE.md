@@ -29,7 +29,8 @@ CLAUDE.md                    this file
 README.md                    public-facing docs
 teetime-search/              the distributable skill folder
   SKILL.md                   skill definition + result formatting rules
-  requirements.txt           host-side deps (httpx, keyring, rich)
+  requirements.txt           CLI deps; installed by scripts/_bootstrap.py
+  scripts/_bootstrap.py      self-bootstrap: managed venv + re-exec
   scripts/search.py          CLI the skill invokes; rich terminal tee sheet
   scripts/creds.py           keychain broker; runs on host
   scripts/prefs.py           play-pattern preferences (~/.config/teetime/)
@@ -98,6 +99,12 @@ stack. The whole pipeline has been verified end to end (2026-08-27) via the
 demo provider: image builds, ZIP db writes 33,791 rows, `/health` answers,
 `scripts/search.py --demo` returns banded results, cache and error paths
 behave.
+
+**Zero-install bootstrap (2026-08-28):** scripts/_bootstrap.py gives every
+entry script a self-managed environment: if the interpreter lacks the CLI
+deps, it builds ~/.config/teetime/venv (one venv, both requirement sets,
+one stamp) and re-execs under it. Nobody runs pip — PEP 668 blocks bare
+pip on modern Macs anyway. serve.py reuses the same ensure_venv.
 
 **No-Docker mode (2026-08-28):** scripts/serve.py runs the service natively
 and search.py/watch.py auto-start it. Verified cold: venv build, 33,791-row

@@ -15,6 +15,7 @@ import math
 import sys
 from datetime import date, datetime, timedelta
 
+import _bootstrap  # noqa: F401  (re-execs under the managed venv if needed)
 import httpx
 
 import creds

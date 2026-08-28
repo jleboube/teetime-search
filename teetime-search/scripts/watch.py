@@ -40,6 +40,7 @@ import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+import _bootstrap  # noqa: F401  (re-execs under the managed venv if needed)
 import httpx
 
 import creds

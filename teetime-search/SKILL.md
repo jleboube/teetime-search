@@ -19,16 +19,13 @@ containing this SKILL.md).
 
 ## Setup (first use)
 
-One step — install the CLI dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-The aggregator service starts itself: the first search auto-launches it as a
-plain local process via `scripts/serve.py` (which builds a private venv at
-`~/.config/teetime/venv` and downloads the ~2 MB Census ZIP gazetteer, one
-time, a couple of minutes). No Docker required. Manual control:
+There is no install step. Every script self-bootstraps: on first run it
+builds a managed venv at `~/.config/teetime/venv`, installs all
+dependencies into it, and re-executes itself there (never run `pip install`
+manually — PEP 668 blocks it on modern Macs). The first search also
+auto-launches the aggregator as a plain local process via `scripts/serve.py`
+and downloads the ~2 MB Census ZIP gazetteer. One time, a couple of
+minutes; everything after is seconds. No Docker required. Manual control:
 
 ```bash
 python3 scripts/serve.py start    # or: stop / status / run (foreground)

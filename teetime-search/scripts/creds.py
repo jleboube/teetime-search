@@ -23,6 +23,8 @@ import getpass
 import json
 import sys
 
+import _bootstrap  # noqa: F401  (re-execs under the managed venv if needed)
+
 # Soft import: search.py imports this module for load_all(), and a search with
 # no tier-2 credentials (including --demo mode) must work on a machine that has
 # never installed keyring. Only the credential-management commands require it.
