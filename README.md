@@ -165,8 +165,12 @@ verification commands.
 
 ```bash
 cd teetime-search/service
-python -m pytest tests/          # dedupe regression suite
+~/.config/teetime/venv/bin/python -m pip install pytest   # once
+~/.config/teetime/venv/bin/python -m pytest tests/        # regression suite
 ```
+
+(The managed venv exists after any first run; bare `pip install` is blocked
+on modern Macs by PEP 668, which is why the commands target it directly.)
 
 `PRD.md` covers the product requirements; `CLAUDE.md` is the working handoff
 doc (invariants, gotchas, phased plan).

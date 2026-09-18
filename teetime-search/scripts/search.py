@@ -4,7 +4,7 @@
 Runs on the host. Pulls tier-2 credentials from the OS keychain, posts a search
 to the loopback-bound aggregator service, and prints results banded by distance.
 
-    python scripts/search.py --origin 47714 --date 2026-08-29 --players 4
+    python scripts/search.py --origin 47714 --date tomorrow --players 4
     python scripts/search.py --origin 37.77,-122.41 --date today --window 07:00-11:00
 """
 from __future__ import annotations

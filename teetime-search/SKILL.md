@@ -101,12 +101,12 @@ read `references/providers.md`. For how credentials are protected, read
 ```bash
 python scripts/search.py \
   --origin 47714 \
-  --date 2026-08-29 \
+  --date tomorrow \
   --players 4 \
   --window 07:00-11:00
 ```
 
-`--origin` accepts a 5-digit US ZIP or a `lat,lng` pair. Add `--max-radius` to
+`--date` accepts YYYY-MM-DD, `today`, or `tomorrow`. `--origin` accepts a 5-digit US ZIP or a `lat,lng` pair. Add `--max-radius` to
 change the outer band (default 35). Add `--json` for raw output instead of the
 formatted table. Add `--demo` to include the synthetic demo provider —
 clearly-fictional inventory for trying the pipeline before connecting
